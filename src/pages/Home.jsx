@@ -1,25 +1,84 @@
-import React from 'react'
-import logo from '../logo.svg';
+import React, { useEffect, useState } from 'react'
+import { FaPlus } from 'react-icons/fa'
+import Layout from '../components/Layout'
+import List from '../components/List';
+import { collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db } from '../firebase_config';
+import { MdModeEdit } from 'react-icons/md'
 
 const Home = () => {
-	//  Template Code
+
+	const [todo, setTodo] = useState("");
+	const [update, setUpdate] = useState({ update: false, ID: "" });
+	const addTodo = async () => {
+		if (todo.length === 0) {
+			alert("First enter the Todo...")
+		} else {
+			await addDoc(collection(db, "Todo"), {
+				note: todo
+			});
+			setTodo("")
+			alert("Todo added...")
+		}
+	}
+
+	const updateTodo = async () => {
+		if (todo.length === 0) {
+			alert("First enter the Todo...")
+		} else {
+			await updateDoc(doc(db, "Todo", update.ID), {
+				note: todo
+			});
+			setTodo("")
+			setUpdate({ update: false, ID: "" })
+			alert("Todo updated...")
+		}
+	}
+
+	const [todos, setTodos] = useState([])
+	useEffect(() => {
+		const q = query(collection(db, "Todo"));
+		const unsubscribe = onSnapshot(q, (querySnapshot) => {
+			const notes = [];
+			querySnapshot.forEach((doc) => {
+				notes.push({ ...doc.data(), todoId: doc.id });
+			});
+			setTodos(notes)
+		});
+		return () => {
+			unsubscribe()
+		}
+	}, [])
+
+	const deleteTodo = async (Id) => {
+		let confirm = window.confirm("Do you really want to delete todo?")
+		if (confirm) {
+			await deleteDoc(doc(db, "Todo", Id));
+			alert("Todo deleted...")
+		}
+
+	}
+
 	return (
 		<>
-			<div className='relative bg z-0' >
-				<section className='flex-col Nunito relative z-10 h-screen w-screen overflow-hidden flex items-center justify-center'>
-					<h1 className='text-4xl text-white font-bold -mt-20 mb-20 w-[50vw] text-center'>A complete boilerplate for your next tailwind and React project!</h1>
-					<div className='flex'>
-						<div className='w-[30vw] items-center justify-center flex flex-col'>
-							<img src={logo} className="h-[20vh]" alt="" />
-							<h2 className='text-2xl font-bold text-white text-center'>ReactJs</h2>
-						</div>
-						<div className='w-[30vw] items-center justify-center flex flex-col'>
-							<img className="h-[20vh]" src="https://camo.githubusercontent.com/bcd4bda49ef6cd9537db065920f4f4f6ac670eae0e0adf2c5133c19b319f1574/68747470733a2f2f627261646c632e67616c6c65727963646e2e76736173736574732e696f2f657874656e73696f6e732f627261646c632f7673636f64652d7461696c77696e646373732f302e322e302f313535383034303536333634392f4d6963726f736f66742e56697375616c53747564696f2e53657276696365732e49636f6e732e44656661756c74" alt="" />
-							<h2 className='text-2xl font-bold text-white text-center'>TailwindCSS</h2>
-						</div>
+			<Layout>
+				<h1 className='text-4xl Nunito font-bold pb-5 text-white'>Todo's List</h1>
+				<div className='w-7/12 h-3/4 p-6 bg-white rounded-lg'>
+
+					<div className='flex justify-center pb-14'>
+						<input id='todo' onChange={(e) => { setTodo(e.target.value) }} value={todo} className='bg-gray-200 rounded-lg outline-none w-[88%] px-6 py-2 pr-12 text-lg' type="text" placeholder='What is your next Todo?' />
+						{update.update ? <span onClick={updateTodo} className='relative'><MdModeEdit className='text-[#3F72AF] text-lg absolute top-3 right-5 cursor-pointer' /></span> : <span onClick={addTodo} className='relative'><FaPlus className='text-[#3F72AF] text-lg absolute top-3 right-5 cursor-pointer' /></span>}
 					</div>
-				</section>
-			</div>
+
+					<div className='grid grid-cols-1 gap-4 justify-items-center overflow-auto max-h-[48vh] h-max'>
+						{
+							todos.map((data, index) => {
+								return <List key={index} item={data} deleteTodo={deleteTodo} setUpdate={setUpdate} setTodo={setTodo} />
+							})
+						}
+					</div>
+				</div>
+			</Layout>
 		</>
 	)
 }
